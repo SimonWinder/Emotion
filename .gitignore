@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# PyTorch models
+*.pth
+*.pt
+best_model.pth
+checkpoints/
+
+# Training outputs
+training_history.json
+*.png
+*.jpg
+confusion_matrix.png
+training_curves.png
+
+# Data (don't commit large dataset)
+Facial_emotion_images/
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/

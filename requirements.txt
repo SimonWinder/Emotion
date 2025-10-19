@@ -1,0 +1,18 @@
+# Core dependencies for facial emotion classification
+
+# Deep learning framework
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Data processing and numerical computing
+numpy>=1.24.0
+pillow>=9.5.0
+
+# Visualization
+matplotlib>=3.7.0
+
+# Metrics and evaluation
+scikit-learn>=1.2.0
+
+# Optional: Progress bars
+tqdm>=4.65.0

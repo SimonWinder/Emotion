@@ -108,29 +108,29 @@ p3 predict.py --image path/to/image.jpg --visualize --save prediction.png
 
 ## Model Architecture
 
-### EmotionCNN
+### EmotionCNN (Simplified Architecture)
 
-The custom CNN architecture consists of:
+The model uses a lightweight CNN architecture converted from TensorFlow specification:
 
-**Convolutional Blocks:**
-1. Conv2d(3→64) → BatchNorm → ReLU → MaxPool
-2. Conv2d(64→128) → BatchNorm → ReLU → MaxPool
-3. Conv2d(128→256) → BatchNorm → ReLU → MaxPool
-4. Conv2d(256→512) → BatchNorm → ReLU → MaxPool
+**Architecture:**
+1. **Conv2d(3→16)** → LeakyReLU(0.1) - First convolutional layer
+2. **Conv2d(16→32)** → LeakyReLU(0.1) - Second convolutional layer
+3. **MaxPool2d(2×2)** - Spatial downsampling (48×48 → 24×24)
+4. **Flatten** - Reshape to 1D (18,432 features)
+5. **Dense(18432→32)** → LeakyReLU(0.1) - Hidden layer
+6. **Dense(32→4)** - Output layer (4 emotion classes)
 
-**Fully Connected Layers:**
-1. FC(8192→512) → ReLU → Dropout(0.5)
-2. FC(512→256) → ReLU → Dropout(0.5)
-3. FC(256→4) → Output
+**Total Parameters:** 595,076 (~595K parameters)
 
-**Total Parameters:** ~4.4 million trainable parameters
+**Input:** 48×48 RGB images (3 channels)
 
 ### Key Features
-- Batch normalization for training stability
-- Dropout for regularization
-- He initialization for weights
-- Cross-entropy loss with class weights
-- Adam optimizer with learning rate scheduling
+- **LeakyReLU activation** (negative_slope=0.1) prevents dying ReLU problem
+- **No BatchNorm or Dropout** - simplified architecture
+- **Single pooling layer** - efficient feature reduction
+- **Kaiming initialization** optimized for LeakyReLU
+- **Cross-entropy loss** with class weights for imbalance handling
+- **Adam optimizer** with learning rate scheduling (ReduceLROnPlateau)
 
 ## Configuration
 
@@ -138,11 +138,12 @@ Key hyperparameters can be modified in `config.py`:
 
 ```python
 # Model configuration
-IMAGE_SIZE = 64           # Input image size
+IMAGE_SIZE = 48           # Input image size (48×48)
 BATCH_SIZE = 64           # Training batch size
 NUM_EPOCHS = 50           # Maximum training epochs
 LEARNING_RATE = 0.001     # Initial learning rate
-DROPOUT_RATE = 0.5        # Dropout probability
+CONV_CHANNELS = [16, 32]  # Convolutional layer filters
+FC_HIDDEN_SIZE = 32       # Hidden layer size
 
 # Training features
 USE_CLASS_WEIGHTS = True  # Handle class imbalance

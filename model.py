@@ -1,11 +1,8 @@
 """
 CNN model architecture for facial emotion classification.
 
-This module defines the EmotionCNN model matching the specified architecture:
-- Conv2D(16) → LeakyReLU → Conv2D(32) → LeakyReLU → MaxPool
-- Flatten → Dense(32) → LeakyReLU → Dense(4) with softmax
-
-Architecture is converted from TensorFlow to PyTorch.
+This module defines the EmotionCNN model with 4 convolutional blocks
+and 3 fully connected layers for classification.
 """
 
 import torch
@@ -19,91 +16,107 @@ class EmotionCNN(nn.Module):
     """
     Convolutional Neural Network for facial emotion classification.
 
-    Architecture (converted from TensorFlow):
-        Input: (48, 48, 3) RGB images
-        - Conv2D: 16 filters, 3x3 kernel, same padding
-        - LeakyReLU: negative_slope=0.1
-        - Conv2D: 32 filters, 3x3 kernel, same padding
-        - LeakyReLU: negative_slope=0.1
-        - MaxPooling2D: pool_size=2x2
-        - Flatten
-        - Dense: 32 units
-        - LeakyReLU: negative_slope=0.1
-        - Dense: 4 units (output layer)
+    Architecture:
+        Convolutional Blocks:
+        1. Conv2d(3→64) → BatchNorm → ReLU → MaxPool
+        2. Conv2d(64→128) → BatchNorm → ReLU → MaxPool
+        3. Conv2d(128→256) → BatchNorm → ReLU → MaxPool
+        4. Conv2d(256→256) → BatchNorm → ReLU → MaxPool
 
-    Note: PyTorch uses CrossEntropyLoss which includes softmax,
-    so we don't apply softmax in the forward pass.
+        Fully Connected Layers:
+        1. FC(4096→256) → ReLU → Dropout(0.5)
+        2. FC(256→256) → ReLU → Dropout(0.5)
+        3. FC(256→4) → Output
 
     Args:
         input_channels: Number of input channels (3 for RGB)
         num_classes: Number of output classes (default: 4)
+        dropout_rate: Dropout probability (default: from config)
     """
 
     def __init__(
         self,
         input_channels: int = config.INPUT_CHANNELS,
-        num_classes: int = config.NUM_CLASSES
+        num_classes: int = config.NUM_CLASSES,
+        dropout_rate: float = config.DROPOUT_RATE
     ):
         super(EmotionCNN, self).__init__()
 
         self.input_channels = input_channels
         self.num_classes = num_classes
+        self.dropout_rate = dropout_rate
 
-        # First Convolutional layer: 3 → 16 filters, 3x3 kernel, same padding
+        # Convolutional Block 1: 3 → 64
         self.conv1 = nn.Conv2d(
             in_channels=input_channels,
-            out_channels=16,
+            out_channels=64,
             kernel_size=3,
-            padding=1  # 'same' padding in PyTorch
+            padding=1
         )
+        self.bn1 = nn.BatchNorm2d(64)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        # LeakyReLU with negative_slope=0.1
-        self.leaky_relu1 = nn.LeakyReLU(negative_slope=0.1)
-
-        # Second Convolutional layer: 16 → 32 filters, 3x3 kernel, same padding
+        # Convolutional Block 2: 64 → 128
         self.conv2 = nn.Conv2d(
-            in_channels=16,
-            out_channels=32,
+            in_channels=64,
+            out_channels=128,
             kernel_size=3,
-            padding=1  # 'same' padding in PyTorch
+            padding=1
         )
+        self.bn2 = nn.BatchNorm2d(128)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        # LeakyReLU with negative_slope=0.1
-        self.leaky_relu2 = nn.LeakyReLU(negative_slope=0.1)
+        # Convolutional Block 3: 128 → 256
+        self.conv3 = nn.Conv2d(
+            in_channels=128,
+            out_channels=256,
+            kernel_size=3,
+            padding=1
+        )
+        self.bn3 = nn.BatchNorm2d(256)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        # Max pooling layer with pool_size 2x2
-        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
+        # Convolutional Block 4: 256 → 256
+        self.conv4 = nn.Conv2d(
+            in_channels=256,
+            out_channels=256,
+            kernel_size=3,
+            padding=1
+        )
+        self.bn4 = nn.BatchNorm2d(256)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        # Calculate flattened size
-        # Input: 48x48 → after one maxpool(2,2): 24x24
-        # 32 channels * 24 * 24 = 18,432
-        self.flattened_size = 32 * 24 * 24
+        # Calculate the flattened size after conv layers
+        # Input: 48x48 → after 4 maxpool(2,2): 3x3
+        # 256 channels * 3 * 3 = 2,304
+        self.flattened_size = 256 * 3 * 3
 
-        # Dense layer with 32 nodes
-        self.fc1 = nn.Linear(self.flattened_size, 32)
+        # Fully connected layers
+        self.fc1 = nn.Linear(self.flattened_size, 256)
+        self.dropout1 = nn.Dropout(dropout_rate)
 
-        # LeakyReLU with negative_slope=0.1
-        self.leaky_relu3 = nn.LeakyReLU(negative_slope=0.1)
+        self.fc2 = nn.Linear(256, 256)
+        self.dropout2 = nn.Dropout(dropout_rate)
 
-        # Output layer with 4 nodes (number of classes)
-        # Note: No softmax here - CrossEntropyLoss handles it
-        self.fc2 = nn.Linear(32, num_classes)
+        # Output layer
+        self.fc3 = nn.Linear(256, num_classes)
 
         # Initialize weights
         self._initialize_weights()
 
     def _initialize_weights(self):
-        """Initialize model weights using He initialization for LeakyReLU."""
+        """Initialize model weights using He initialization."""
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                # He initialization for LeakyReLU
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu', a=0.1)
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu', a=0.1)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -116,42 +129,46 @@ class EmotionCNN(nn.Module):
             Output tensor of shape (batch_size, num_classes)
             Note: Output is logits (no softmax applied)
         """
-        # First convolutional layer + LeakyReLU
+        # Convolutional Block 1
         x = self.conv1(x)
-        x = self.leaky_relu1(x)
+        x = self.bn1(x)
+        x = F.relu(x)
+        x = self.pool1(x)
 
-        # Second convolutional layer + LeakyReLU
+        # Convolutional Block 2
         x = self.conv2(x)
-        x = self.leaky_relu2(x)
+        x = self.bn2(x)
+        x = F.relu(x)
+        x = self.pool2(x)
 
-        # Max pooling
-        x = self.maxpool(x)
+        # Convolutional Block 3
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = F.relu(x)
+        x = self.pool3(x)
+
+        # Convolutional Block 4
+        x = self.conv4(x)
+        x = self.bn4(x)
+        x = F.relu(x)
+        x = self.pool4(x)
 
         # Flatten
         x = x.view(x.size(0), -1)
 
-        # First dense layer + LeakyReLU
+        # Fully connected layers
         x = self.fc1(x)
-        x = self.leaky_relu3(x)
+        x = F.relu(x)
+        x = self.dropout1(x)
+
+        x = self.fc2(x)
+        x = F.relu(x)
+        x = self.dropout2(x)
 
         # Output layer (no activation - handled by CrossEntropyLoss)
-        x = self.fc2(x)
+        x = self.fc3(x)
 
         return x
-
-    def forward_with_softmax(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass with softmax for inference/prediction.
-        Use this method when you need probabilities (e.g., during inference).
-
-        Args:
-            x: Input tensor of shape (batch_size, 3, 48, 48)
-
-        Returns:
-            Output tensor with softmax applied (batch_size, num_classes)
-        """
-        logits = self.forward(x)
-        return F.softmax(logits, dim=1)
 
     def count_parameters(self) -> int:
         """
@@ -167,21 +184,19 @@ class EmotionCNN(nn.Module):
         print("\n" + "=" * 70)
         print("MODEL ARCHITECTURE")
         print("=" * 70)
-        print(f"\nEmotionCNN (Simplified Architecture)")
+        print(f"\nEmotionCNN")
         print(f"  Input: ({self.input_channels}, {config.IMAGE_SIZE}, {config.IMAGE_SIZE})")
-        print(f"\n  Layer 1: Conv2d({self.input_channels} → 16, kernel=3x3, padding=same)")
-        print(f"           LeakyReLU(negative_slope=0.1)")
-        print(f"\n  Layer 2: Conv2d(16 → 32, kernel=3x3, padding=same)")
-        print(f"           LeakyReLU(negative_slope=0.1)")
-        print(f"\n  Layer 3: MaxPool2d(kernel=2x2)")
-        print(f"           Output shape: (32, 24, 24)")
-        print(f"\n  Layer 4: Flatten")
-        print(f"           Output shape: ({self.flattened_size},)")
-        print(f"\n  Layer 5: Linear({self.flattened_size} → 32)")
-        print(f"           LeakyReLU(negative_slope=0.1)")
-        print(f"\n  Layer 6: Linear(32 → {self.num_classes})")
-        print(f"           [Softmax handled by CrossEntropyLoss during training]")
+        print(f"\n  Convolutional Blocks:")
+        print(f"    Block 1: Conv2d(3 → 64) → BatchNorm → ReLU → MaxPool")
+        print(f"    Block 2: Conv2d(64 → 128) → BatchNorm → ReLU → MaxPool")
+        print(f"    Block 3: Conv2d(128 → 256) → BatchNorm → ReLU → MaxPool")
+        print(f"    Block 4: Conv2d(256 → 256) → BatchNorm → ReLU → MaxPool")
+        print(f"\n  Fully Connected Layers:")
+        print(f"    FC1: Linear({self.flattened_size} → 256) → ReLU → Dropout({self.dropout_rate})")
+        print(f"    FC2: Linear(256 → 256) → ReLU → Dropout({self.dropout_rate})")
+        print(f"    FC3: Linear(256 → {self.num_classes})")
         print(f"\n  Output: {self.num_classes} classes")
+        print(f")")
         print(f"\nTotal parameters: {self.count_parameters():,}")
         print("=" * 70)
 
@@ -235,12 +250,5 @@ if __name__ == "__main__":
     for i in range(min(2, batch_size)):
         print(f"  Sample {i}: {probabilities[i].cpu().numpy()}")
         print(f"  Sum: {probabilities[i].sum().item():.6f}")
-
-    # Test forward_with_softmax method
-    print("\nTesting forward_with_softmax method...")
-    with torch.no_grad():
-        probs = model.forward_with_softmax(dummy_input)
-    print(f"Probabilities (direct): {probs[0].cpu().numpy()}")
-    print(f"Sum: {probs[0].sum().item():.6f}")
 
     print("\nModel test complete!")

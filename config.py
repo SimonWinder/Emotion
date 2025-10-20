@@ -26,14 +26,15 @@ IDX_TO_CLASS = {idx: emotion for emotion, idx in CLASS_TO_IDX.items()}
 # ============================================================================
 # Model Configuration
 # ============================================================================
-IMAGE_SIZE = 48  # Input image size (48x48) - matches TensorFlow model
+IMAGE_SIZE = 48  # Input image size (48x48)
 INPUT_CHANNELS = 3  # RGB images
 
-# CNN Architecture (simplified model matching TensorFlow specification)
-# Conv2D(16) → LeakyReLU → Conv2D(32) → LeakyReLU → MaxPool → Flatten → Dense(32) → Dense(4)
-CONV_CHANNELS = [16, 32]  # Number of filters in conv layers
-FC_HIDDEN_SIZE = 32  # Hidden layer size in fully connected layer
-DROPOUT_RATE = 0.0  # No dropout in the specified architecture
+# CNN Architecture - 4 Convolutional Blocks
+# Conv2d(3→64) → Conv2d(64→128) → Conv2d(128→256) → Conv2d(256→256)
+# Each with BatchNorm → ReLU → MaxPool
+CONV_CHANNELS = [64, 128, 256, 256]  # Number of filters in each conv block
+FC_HIDDEN_SIZE = 256  # Hidden layer size in fully connected layers
+DROPOUT_RATE = 0.5  # Dropout probability for regularization
 
 # ============================================================================
 # Training Configuration
@@ -139,10 +140,10 @@ def print_config():
 
     print(f"\nModel:")
     print(f"  Image size: {IMAGE_SIZE}x{IMAGE_SIZE}")
-    print(f"  Architecture: Simplified CNN (TensorFlow-style)")
+    print(f"  Architecture: 4-Block CNN with BatchNorm")
     print(f"  Conv channels: {CONV_CHANNELS}")
     print(f"  FC hidden size: {FC_HIDDEN_SIZE}")
-    print(f"  Dropout rate: {DROPOUT_RATE} (no dropout)")
+    print(f"  Dropout rate: {DROPOUT_RATE}")
 
     print(f"\nTraining:")
     print(f"  Batch size: {BATCH_SIZE}")

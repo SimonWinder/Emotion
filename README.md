@@ -108,27 +108,31 @@ p3 predict.py --image path/to/image.jpg --visualize --save prediction.png
 
 ## Model Architecture
 
-### EmotionCNN (Simplified Architecture)
+### EmotionCNN
 
-The model uses a lightweight CNN architecture converted from TensorFlow specification:
+The model uses a 4-block CNN architecture with BatchNormalization and Dropout:
 
-**Architecture:**
-1. **Conv2d(3→16)** → LeakyReLU(0.1) - First convolutional layer
-2. **Conv2d(16→32)** → LeakyReLU(0.1) - Second convolutional layer
-3. **MaxPool2d(2×2)** - Spatial downsampling (48×48 → 24×24)
-4. **Flatten** - Reshape to 1D (18,432 features)
-5. **Dense(18432→32)** → LeakyReLU(0.1) - Hidden layer
-6. **Dense(32→4)** - Output layer (4 emotion classes)
+**Convolutional Blocks:**
+1. **Conv2d(3→64)** → BatchNorm → ReLU → MaxPool(2×2)
+2. **Conv2d(64→128)** → BatchNorm → ReLU → MaxPool(2×2)
+3. **Conv2d(128→256)** → BatchNorm → ReLU → MaxPool(2×2)
+4. **Conv2d(256→256)** → BatchNorm → ReLU → MaxPool(2×2)
 
-**Total Parameters:** 595,076 (~595K parameters)
+**Fully Connected Layers:**
+1. **FC(2304→256)** → ReLU → Dropout(0.5)
+2. **FC(256→256)** → ReLU → Dropout(0.5)
+3. **FC(256→4)** - Output layer (4 emotion classes)
+
+**Total Parameters:** 1,619,204 (~1.6M parameters)
 
 **Input:** 48×48 RGB images (3 channels)
 
 ### Key Features
-- **LeakyReLU activation** (negative_slope=0.1) prevents dying ReLU problem
-- **No BatchNorm or Dropout** - simplified architecture
-- **Single pooling layer** - efficient feature reduction
-- **Kaiming initialization** optimized for LeakyReLU
+- **Batch normalization** for training stability and faster convergence
+- **Dropout (0.5)** for regularization and preventing overfitting
+- **ReLU activation** throughout the network
+- **He (Kaiming) initialization** optimized for ReLU
+- **4 MaxPool layers** progressively reduce spatial dimensions (48→24→12→6→3)
 - **Cross-entropy loss** with class weights for imbalance handling
 - **Adam optimizer** with learning rate scheduling (ReduceLROnPlateau)
 
@@ -138,12 +142,13 @@ Key hyperparameters can be modified in `config.py`:
 
 ```python
 # Model configuration
-IMAGE_SIZE = 48           # Input image size (48×48)
-BATCH_SIZE = 64           # Training batch size
-NUM_EPOCHS = 50           # Maximum training epochs
-LEARNING_RATE = 0.001     # Initial learning rate
-CONV_CHANNELS = [16, 32]  # Convolutional layer filters
-FC_HIDDEN_SIZE = 32       # Hidden layer size
+IMAGE_SIZE = 48                   # Input image size (48×48)
+BATCH_SIZE = 64                   # Training batch size
+NUM_EPOCHS = 50                   # Maximum training epochs
+LEARNING_RATE = 0.001             # Initial learning rate
+CONV_CHANNELS = [64, 128, 256, 256]  # Conv layer filters
+FC_HIDDEN_SIZE = 256              # Hidden layer size
+DROPOUT_RATE = 0.5                # Dropout probability
 
 # Training features
 USE_CLASS_WEIGHTS = True  # Handle class imbalance

@@ -1,5 +1,7 @@
 # Facial Emotion Classification
 
+Note: This code doesn't work correctly at the moment.
+
 A deep learning system for classifying facial expressions into four emotion categories (happy, neutral, sad, surprise) using Convolutional Neural Networks (CNN) built with PyTorch.
 
 ## Overview
